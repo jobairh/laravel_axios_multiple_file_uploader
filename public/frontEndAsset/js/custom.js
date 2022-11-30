@@ -139,15 +139,37 @@ $('.addBtn').on('click',function () {
 
     let newTableRow =
             "<tr>"+
-                "<td><input class='form-control' type='file'></td>"+
-                "<td><h6 class='fileSize'>File Size</h6></td>"+
+                "<td><input class='fileInput form-control' type='file'></td>"+
+                "<td class='fileSize'>File Size</td>"+
                 "<td><button class='btn btn-danger btn-sm cancelBtn'>Cancel</button></td>"+
                 "<td><button class='btn btn-primary btn-sm upBtn'>Upload</button></td>"+
-                "<td><h6 class='fileUpMb'>Uploaded(MB)</h6></td>"+
-                "<td><h6 class='fileUpPercentage'>Uploaded(%)</h6></td>"+
-                "<td><h6 class='fileUpStatus'>Status</h6></td>"+
+                "<td class='fileUpMb'>Uploaded(MB)</td>"+
+                "<td class='fileUpPercentage'>Uploaded(%)</td>"+
+                "<td class='fileUpStatus'>Status</td>"+
             "</tr>"
     $('.fileList').append(newTableRow);
+
+    $('.fileInput').on('change',function () {
+        let myFile = $(this).prop('files');
+        let myFileSize = (myFile[0].size/(1024*1024)).toFixed(2);
+        $(this).closest('tr').find('.fileSize').html(myFileSize+ " MB");
+    })
+
+    $('.upBtn').on('click', function (event) {
+
+        let myFile = $(this).closest('tr').find('.fileInput').prop('files');
+        let fileUpMb = $(this).closest('tr').find('.fileUpMb');
+        let fileUpPercentage = $(this).closest('tr').find('.fileUpPercentage');
+        let fileUpStatus = $(this).closest('tr').find('.fileUpStatus');
+        let upBtn = $(this);
+
+        let formData = new FormData();
+        formData.append('fileKey', myFile[0]);
+        onFileUpload(formData, fileUpMb, fileUpPercentage, fileUpStatus, upBtn);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    })
+
 
     // Remove Row
     $('.cancelBtn').on('click', function () {
@@ -156,3 +178,32 @@ $('.addBtn').on('click',function () {
     })
 
 })
+
+ function onFileUpload(formData, fileUpMb, fileUpPercentage, fileUpStatus, upBtn) {
+    fileUpStatus.html("Uploading...");
+    upBtn.prop('disabled', true);
+    let url = "/fileUp";
+    let config = {
+        headers:{'content-type':'multipart/form-data'},
+        onUploadProgress:function (progressEvent) {
+            let upMb = (progressEvent.loaded/(1024*1024)).toFixed(2) +" Mb";
+            let upPercent = ((progressEvent.loaded*100)/progressEvent.total).toFixed(2) +" %";
+            fileUpMb.html(upMb);
+            fileUpPercentage.html(upPercent);
+        }
+    }
+
+    axios.post(url, formData, config)
+        .then(function (response) {
+            if (response.status===200){
+                fileUpStatus.html('Success');
+                upBtn.prop('disabled', false);
+            }else{
+                fileUpStatus.html('Fail');
+                upBtn.prop('disabled', false);
+            }
+        }).catch(function (error) {
+        fileUpStatus.html('Fail');
+        upBtn.prop('disabled', false);
+    })
+ }
